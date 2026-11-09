@@ -37,10 +37,9 @@ jobs:
             while true; do
               echo "🎥 VLC stream ko buffer kar raha hai aur FFmpeg Facebook par bhej raha hai..."
               
-              # cvlc (Headless VLC) se stream open kar ke FFmpeg ko pipe karna
+              # --http-origin hata diya gaya hai kyunke VLC usay support nahi karta
               cvlc --network-caching=8000 \
                 --http-referrer="https://playerdee.top/" \
-                --http-origin="https://playerdee.top" \
                 --http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36" \
                 "https://dz5.bhalocast.pro:7059/hls/itv444.m3u8?md5=u5A_6PUl-hTjS4am7QCbOQ&expires=1794261612&ch=itv444&s=d273e2fbf3655592219a6c0a4baab715" \
                 --sout "#std{access=file,mux=ts,dst=-}" vlc://quit | \
