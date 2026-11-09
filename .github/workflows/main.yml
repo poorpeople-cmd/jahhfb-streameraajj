@@ -1,0 +1,43 @@
+name: Streamlink Facebook Live
+
+on:
+  workflow_dispatch:
+    inputs:
+      fb_stream_key:
+        description: 'Facebook Stream Key'
+        required: true
+        type: string
+      duration_minutes:
+        description: 'Stream ka time (Minutes mein, e.g., 180)'
+        required: true
+        default: '120'
+        type: string
+
+jobs:
+  broadcast:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Install Streamlink & FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg python3-pip
+          pip install --upgrade streamlink
+
+      - name: Start Live Stream to Facebook
+        env:
+          FB_KEY: ${{ github.event.inputs.fb_stream_key }}
+          DURATION: ${{ github.event.inputs.duration_minutes }}
+        run: |
+          echo "🚀 Streamlink ke zariye Facebook Live start ho raha hai..."
+          
+          timeout $((DURATION * 60)) streamlink --stdout \
+            --http-header "Referer=https://playerdee.top/" \
+            --http-header "Origin=https://playerdee.top" \
+            --http-header "User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36" \
+            "https://dz5.bhalocast.pro:7059/hls/itv444.m3u8?md5=u5A_6PUl-hTjS4am7QCbOQ&expires=1794261612&ch=itv444&s=d273e2fbf3655592219a6c0a4baab715" best \
+            | ffmpeg -y -i - -c:v copy -c:a aac -b:a 128k -f flv "rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY" || true
+            
+          echo "✅ Stream mukammal ho gayi hai."
