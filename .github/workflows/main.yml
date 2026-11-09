@@ -1,4 +1,4 @@
-name: Direct FFmpeg Facebook Live
+name: VPN FFmpeg Facebook Live
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       duration_minutes:
-        description: 'Stream ka time (Minutes mein, e.g., 180)'
+        description: 'Stream ka time (Minutes mein)'
         required: true
         default: '120'
         type: string
@@ -20,17 +20,34 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Install FFmpeg
+      - name: Install FFmpeg & Cloudflare WARP (Free VPN)
         run: |
+          echo "⚙️ FFmpeg aur VPN install ho raha hai..."
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg curl gnupg lsb-release
+          
+          # Cloudflare WARP (VPN) Repository Add karna
+          curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list
+          
+          sudo apt-get update
+          sudo apt-get install -y cloudflare-warp
+          
+          # VPN Connect karna
+          warp-cli --accept-tos registration new
+          warp-cli --accept-tos connect
+          sleep 5
+          
+          echo "🌐 VPN Connect ho gaya! Naya IP Address yeh hai:"
+          curl -s ifconfig.me
+          echo ""
 
       - name: Start Live Stream to Facebook
         env:
           FB_KEY: ${{ github.event.inputs.fb_stream_key }}
           DURATION: ${{ github.event.inputs.duration_minutes }}
         run: |
-          echo "🚀 Direct FFmpeg se Facebook Live start ho raha hai..."
+          echo "🚀 VPN ke zariye Facebook Live start ho raha hai..."
           
           timeout $((DURATION * 60)) bash -c '
             while true; do
@@ -46,9 +63,9 @@ jobs:
                 -c:a aac -b:a 128k -ar 44100 -f flv \
                 "rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY"
               
-              echo "⚠️ FFmpeg crash hua! 5 seconds mein retry ho raha hai..."
+              echo "⚠️ Connection toota! 5 seconds mein retry ho raha hai..."
               sleep 5
             done
           ' || true
           
-          echo "✅ Stream mukammal ho gayi hai."
+          echo "✅ Stream mukammal ho gayi."
