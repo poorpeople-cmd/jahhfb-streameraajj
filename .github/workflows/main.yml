@@ -1,4 +1,4 @@
-name: Streamlink Facebook Live
+name: Direct FFmpeg Facebook Live
 
 on:
   workflow_dispatch:
@@ -20,32 +20,33 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Install Streamlink & FFmpeg
+      - name: Install FFmpeg
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg python3-pip
-          pip install --upgrade streamlink
+          sudo apt-get install -y ffmpeg
 
       - name: Start Live Stream to Facebook
         env:
           FB_KEY: ${{ github.event.inputs.fb_stream_key }}
           DURATION: ${{ github.event.inputs.duration_minutes }}
         run: |
-          echo "🚀 Streamlink ke zariye Facebook Live start ho raha hai..."
+          echo "🚀 Direct FFmpeg se Facebook Live start ho raha hai..."
           
-          # Timeout aur Auto-Reconnect Loop lagaya gaya hai
           timeout $((DURATION * 60)) bash -c '
             while true; do
-              echo "🎥 Streaming start ki ja rahi hai..."
+              echo "🎥 Streaming start ho rahi hai..."
               
-              streamlink --stdout \
-                --http-header "Referer=https://playerdee.top/" \
-                --http-header "Origin=https://playerdee.top" \
-                --http-header "User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36" \
-                "https://dz5.bhalocast.pro:7059/hls/itv444.m3u8?md5=u5A_6PUl-hTjS4am7QCbOQ&expires=1794261612&ch=itv444&s=d273e2fbf3655592219a6c0a4baab715" best \
-                | ffmpeg -y -thread_queue_size 1024 -fflags +igndts+genpts -i - -c:v copy -c:a aac -b:a 128k -f flv -flvflags no_duration_filesize "rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY"
+              ffmpeg -y \
+                -headers "Referer: https://playerdee.top/"$'\r\n'"Origin: https://playerdee.top"$'\r\n'"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"$'\r\n' \
+                -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
+                -rw_timeout 15000000 \
+                -i "https://dz5.bhalocast.pro:7059/hls/itv444.m3u8?md5=u5A_6PUl-hTjS4am7QCbOQ&expires=1794261612&ch=itv444&s=d273e2fbf3655592219a6c0a4baab715" \
+                -c:v libx264 -preset veryfast -b:v 2500k -maxrate 2500k -bufsize 5000k \
+                -pix_fmt yuv420p -g 60 -r 30 \
+                -c:a aac -b:a 128k -ar 44100 -f flv \
+                "rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY"
               
-              echo "⚠️ Connection drop hua! 5 seconds mein auto-reconnect ho raha hai..."
+              echo "⚠️ FFmpeg crash hua! 5 seconds mein retry ho raha hai..."
               sleep 5
             done
           ' || true
